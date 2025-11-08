@@ -30,7 +30,7 @@ interface AnalysisInput {
 }
 
 export default function EnergyApp() {
-  // Step control：1=输入资料/文本/Docx，2=显示柱状图，3=活动更新
+  // Step control: 1 = input, 2 = show chart, 3 = activity update
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Profile
@@ -43,14 +43,14 @@ export default function EnergyApp() {
     tags: [],
   });
 
-  // 文本 / docx
+  // Free text / docx upload
   const [text, setText] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [loadingDocx, setLoadingDocx] = useState(false);
   const [docxError, setDocxError] = useState<string | null>(null);
 
-  // 两个百分数 + baseline
+  // Two percentage values + baseline
   const [mental, setMental] = useState<number | null>(null);
   const [physical, setPhysical] = useState<number | null>(null);
   const [baseline, setBaseline] = useState<{ mental: number; physical: number } | null>(null);
@@ -62,33 +62,32 @@ export default function EnergyApp() {
     [profile]
   );
 
-  // 解析 docx：在客户端动态 import browser 版本，避免 SSR 报错
+  // Parse docx: dynamic import for browser-only behavior
   const handleDocx = useCallback(async (files: FileList | null) => {
     if (!files || !files.length) return;
     const f = files[0];
     setDocxError(null);
     if (!f.name.toLowerCase().endsWith('.docx')) {
-      setDocxError('仅支持 .docx 文件');
+      setDocxError('Only .docx files are supported');
       return;
     }
     setLoadingDocx(true);
     setFileName(f.name);
     try {
-      const mammoth = await
-        import('mammoth/mammoth.browser'); // 动态加载
+      const mammoth = await import('mammoth/mammoth.browser');
       const arrayBuffer = await f.arrayBuffer();
       const { value } = await mammoth.extractRawText({ arrayBuffer });
       const normalized = value.replace(/\r\n?/g, '\n').trim();
       setText((prev) => (prev ? prev + '\n\n' + normalized : normalized));
     } catch (e) {
       console.error(e);
-      setDocxError('解析失败，请确认是否为有效的 .docx 文档');
+      setDocxError('Failed to parse .docx file. Please make sure it is valid.');
     } finally {
       setLoadingDocx(false);
     }
   }, []);
 
-  // 请求后端拿两个值
+  // Fetch two energy values from backend
   const runAnalyze = async () => {
     setAnalyzing(true);
     try {
@@ -106,13 +105,13 @@ export default function EnergyApp() {
       setStep(2);
     } catch (e) {
       console.error(e);
-      alert('后端分析失败，请检查 /api/analyze2p 路由');
+      alert('Backend analysis failed. Please check /api/analyze2p route.');
     } finally {
       setAnalyzing(false);
     }
   };
 
-  // 活动上传并更新
+  // Apply activity to update energy
   const [activity, setActivity] = useState('');
   const [applying, setApplying] = useState(false);
   const [lastDelta, setLastDelta] = useState<{ mental: number; physical: number } | null>(null);
@@ -138,7 +137,7 @@ export default function EnergyApp() {
       setStep(3);
     } catch (e) {
       console.error(e);
-      alert('后端 applyActivity 失败，请检查路由');
+      alert('Backend applyActivity failed. Please check the route.');
     } finally {
       setApplying(false);
     }
@@ -146,20 +145,20 @@ export default function EnergyApp() {
 
   const barData = useMemo(
     () => [
-      { kind: '精神', value: mental ?? 0, baseline: baseline?.mental ?? null },
-      { kind: '身体', value: physical ?? 0, baseline: baseline?.physical ?? null },
+      { kind: 'Mental', value: mental ?? 0, baseline: baseline?.mental ?? null },
+      { kind: 'Physical', value: physical ?? 0, baseline: baseline?.physical ?? null },
     ],
     [mental, physical, baseline]
   );
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
-      <h1 style={{ fontSize: 22, marginBottom: 12 }}>Energy Manager（Next.js + TS 最小原型）</h1>
+      <h1 style={{ fontSize: 22, marginBottom: 12 }}>Energy Manager (Next.js + TS Minimal Prototype)</h1>
 
       {step === 1 && (
         <div style={{ display: 'grid', gap: 12 }}>
           <div>
-            <label>称呼：</label>
+            <label>Name:</label>
             <br />
             <input
               value={profile.name}
@@ -167,7 +166,7 @@ export default function EnergyApp() {
             />
           </div>
           <div>
-            <label>平均睡眠（小时）：</label>
+            <label>Average Sleep (hours):</label>
             <br />
             <input
               type="number"
@@ -182,7 +181,7 @@ export default function EnergyApp() {
             />
           </div>
           <div>
-            <label>工作风格：</label>
+            <label>Work Style:</label>
             <br />
             {(['maker', 'manager', 'mixed'] as const).map((k) => (
               <label key={k} style={{ marginRight: 12 }}>
@@ -198,7 +197,7 @@ export default function EnergyApp() {
           </div>
 
           <div>
-            <label>自由文本（可粘贴日程/日志）</label>
+            <label>Free Text (paste schedule / journal / notes)</label>
             <br />
             <textarea
               value={text}
@@ -209,11 +208,11 @@ export default function EnergyApp() {
           </div>
 
           <div>
-            <label>或上传 .docx：</label>{' '}
+            <label>Or upload .docx:</label>{' '}
             <button onClick={() => fileRef.current?.click()} disabled={loadingDocx}>
-              选择文件
+              Choose File
             </button>
-            {fileName && <span style={{ marginLeft: 8 }}>已选：{fileName}</span>}
+            {fileName && <span style={{ marginLeft: 8 }}>Selected: {fileName}</span>}
             <input
               ref={fileRef}
               type="file"
@@ -221,13 +220,13 @@ export default function EnergyApp() {
               hidden
               onChange={(e) => handleDocx(e.target.files)}
             />
-            {loadingDocx && <div>解析中…</div>}
+            {loadingDocx && <div>Parsing…</div>}
             {docxError && <div style={{ color: 'crimson' }}>{docxError}</div>}
           </div>
 
           <div>
             <button onClick={runAnalyze} disabled={!canAnalyze || analyzing}>
-              {analyzing ? '分析中…' : '发送后端并获取两个能量值'}
+              {analyzing ? 'Analyzing…' : 'Send to backend and get two energy values'}
             </button>
           </div>
         </div>
@@ -235,7 +234,7 @@ export default function EnergyApp() {
 
       {step >= 2 && (
         <div style={{ marginTop: 24 }}>
-          <h3>当前能量（%）</h3>
+          <h3>Current Energy (%)</h3>
           <div
             style={{
               width: '100%',
@@ -252,15 +251,15 @@ export default function EnergyApp() {
                 <YAxis domain={[0, 100]} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="value" name="当前值" />
-                {baseline && <Bar dataKey="baseline" name="初始值" />}
+                <Bar dataKey="value" name="Current" />
+                {baseline && <Bar dataKey="baseline" name="Baseline" />}
               </BarChart>
             </ResponsiveContainer>
           </div>
           {lastDelta && (
             <div style={{ marginTop: 8, color: '#666' }}>
-              最近活动影响：精神 {lastDelta.mental >= 0 ? '+' : ''}
-              {lastDelta.mental}，身体 {lastDelta.physical >= 0 ? '+' : ''}
+              Recent Activity Impact: Mental {lastDelta.mental >= 0 ? '+' : ''}
+              {lastDelta.mental}, Physical {lastDelta.physical >= 0 ? '+' : ''}
               {lastDelta.physical}
             </div>
           )}
@@ -269,7 +268,7 @@ export default function EnergyApp() {
 
       {step >= 2 && (
         <div style={{ marginTop: 16 }}>
-          <label>输入活动（例：20min nap / coffee / 30min run / deep work 45m）</label>
+          <label>Enter Activity (e.g. 20min nap / coffee / 30min run / deep work 45m)</label>
           <br />
           <input
             value={activity}
@@ -281,7 +280,7 @@ export default function EnergyApp() {
             disabled={!activity.trim() || applying}
             style={{ marginLeft: 8 }}
           >
-            {applying ? '上传中…' : '上传到后端并更新'}
+            {applying ? 'Submitting…' : 'Send to backend and update'}
           </button>
         </div>
       )}
