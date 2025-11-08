@@ -1,14 +1,34 @@
 import { NextResponse } from "next/server";
+import fs from "node:fs/promises";
+import path from "node:path";
 
-// 便于在浏览器直接验证路由是否生效：GET http://localhost:3000/api/analyze2p
+// ✅ GET：用于测试路由是否存在
 export async function GET() {
   return NextResponse.json({ ok: true, route: "/api/analyze2p" });
 }
 
+// ✅ POST：处理请求 + 记录日志 + 返回能量数值
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null);
 
+    // -------- 写入日志（带时间戳） --------
+    const logDir = path.join(process.cwd(), "data");
+    const logFile = path.join(logDir, "user-input.log");
+    await fs.mkdir(logDir, { recursive: true });
+
+    const entry = {
+      timestamp: new Date().toISOString(),
+      profile: body?.profile ?? null,
+      freeText: body?.freeText ?? "",
+      userAgent: req.headers.get("user-agent"),
+      ip: req.headers.get("x-forwarded-for"),
+    };
+
+    await fs.appendFile(logFile, JSON.stringify(entry) + "\n", "utf8");
+    // -------- 日志结束 --------
+
+    // -------- 计算两个能量 --------
     const sleep = Number(body?.profile?.sleepHours ?? 6);
     const workStyle = body?.profile?.workStyle as
       | "maker"
