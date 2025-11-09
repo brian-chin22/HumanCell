@@ -171,29 +171,67 @@ export default function EnergyApp() {
     [mental, physical, baseline]
   );
 
+  // 🎨 --- NEW MASCOT HELPER FUNCTION ---
+  // This function returns a URL and color based on the energy level.
+  // You can replace the URLs with your own mascot images.
+  const getMascotData = (level: number | null) => {
+    const score = level ?? 50; // Default to 'Okay' if null
+    
+    // 🎨 REPLACE THESE URLs WITH YOUR PNGs/JPEGs
+    if (score >= 75) {
+      return {
+        // High Energy
+        url: '/mascots/Energetic_Monopoly.png',
+        color: '#4ade80'
+      };
+    }
+    if (score >= 50) {
+      // Medium Energy
+      return {
+        url: '/mascots/Neutral_Monopoly.png',
+        color: '#facc15'
+      };
+    }
+    if (score >= 25) {
+      // Low Energy
+      return {
+        url: '/mascots/Exhausted_Monopoly_headlines.png',
+        color: '#f87171'
+      };
+    }
+    // < 25 (Very Low Energy)
+    return {
+      url: '/mascots/Exhausted_Monopoly_eyebags.png',
+      color: '#ef4444'
+    };
+  };
+
+  // 🎨 Get the mascot data objects before returning the JSX
+  const mentalMascot = getMascotData(mental);
+  const physicalMascot = getMascotData(physical);
+
   return (
-    // 🎨 --- MAIN CONTAINER ---
-    // Change the background, text color, and font for the whole app.
+    // 🎨 --- MAIN CONTAINER (Dark Theme) ---
     <div
       style={{
         maxWidth: 900,
-        margin: '2rem auto', // 🎨 Added more vertical margin
-        padding: '2rem', // 🎨 Added overall padding
+        margin: '2rem auto',
+        padding: '2rem',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        backgroundColor: '#f9fafb', // 🎨 Light gray background
-        color: '#1f2937', // 🎨 Darker text
-        borderRadius: '16px', // 🎨 Rounded corners for the whole container
-        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.05)', // 🎨 Soft shadow
+        backgroundColor: '#1f2937', // 🎨 Dark slate background
+        color: '#d1d5db', // 🎨 Light gray text
+        borderRadius: '16px',
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)', // 🎨 Adjusted shadow for dark
       }}
     >
       {/* 🎨 --- HEADER --- */}
       <h1
         style={{
-          fontSize: '2.25rem', // 🎨 Bigger font
-          marginBottom: '2rem', // 🎨 More space below header
-          textAlign: 'center', // 🎨 Centered text
-          fontWeight: '700', // 🎨 Bolder
-          color: '#374151', // 🎨 Slightly lighter header color
+          fontSize: '2.25rem',
+          marginBottom: '2rem',
+          textAlign: 'center',
+          fontWeight: '700',
+          color: '#f9fafb', // 🎨 Bright white header
         }}
       >
         Energy Manager
@@ -201,36 +239,35 @@ export default function EnergyApp() {
 
       {/* 🎨 --- STEP 1: INPUT FORM --- */}
       {step === 1 && (
-        <div style={{ display: 'grid', gap: '1.5rem' }}> {/* 🎨 Increased gap */}
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           
-          {/* 🎨 --- CARD FOR PROFILE INFO --- */}
+          {/* 🎨 --- CARD FOR PROFILE INFO (Dark) --- */}
           <div style={{
             padding: '1.5rem',
-            backgroundColor: '#ffffff',
+            backgroundColor: '#374151', // 🎨 Darker card
             borderRadius: '12px',
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.03)',
             display: 'grid',
             gap: '1.25rem'
           }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0 0 0.5rem 0' }}>Your Profile</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0 0 0.5rem 0', color: '#f9fafb' }}>Your Profile</h3>
             <div>
-              {/* 🎨 Style the <label> */}
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>Name:</label>
+              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>Name:</label>
               <input
                 value={profile.name}
                 onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                // 🎨 Style the <input>
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid #4b5563', // 🎨 Darker border
                   borderRadius: '8px',
-                  boxSizing: 'border-box', // 🎨 Fixes padding issue
+                  boxSizing: 'border-box',
+                  backgroundColor: '#4b5563', // 🎨 Dark input
+                  color: '#f9fafb', // 🎨 Light text
                 }}
               />
             </div>
             <div>
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>Average Sleep (hours):</label>
+              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>Average Sleep (hours):</label>
               <input
                 type="number"
                 step="0.5"
@@ -244,31 +281,34 @@ export default function EnergyApp() {
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid #4b5563',
                   borderRadius: '8px',
                   boxSizing: 'border-box',
+                  backgroundColor: '#4b5563',
+                  color: '#f9fafb',
                 }}
               />
             </div>
             <div>
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>Work Style:</label>
-              {/* 🎨 Make radio buttons more appealing */}
+              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>Work Style:</label>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 {(['maker', 'manager', 'mixed'] as const).map((k) => (
                   <label
                     key={k}
                     style={{
-                      flex: 1, // 🎨 Make them stretch
+                      flex: 1,
                       padding: '0.75rem 1rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid #4b5563',
                       borderRadius: '8px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.5rem',
-                      // 🎨 Highlight the selected one
-                      backgroundColor: profile.workStyle === k ? '#e0e7ff' : '#ffffff',
-                      borderColor: profile.workStyle === k ? '#4f46e5' : '#d1d5db',
+                      // 🎨 Highlight selected radio in dark mode
+                      backgroundColor: profile.workStyle === k ? '#4f46e5' : '#374151',
+                      borderColor: profile.workStyle === k ? '#a5b4fc' : '#4b5563',
+                      color: profile.workStyle === k ? '#ffffff' : '#d1d5db',
+                      transition: 'all 0.2s',
                     }}
                   >
                     <input
@@ -276,27 +316,26 @@ export default function EnergyApp() {
                       name="workstyle"
                       checked={profile.workStyle === k}
                       onChange={() => setProfile({ ...profile, workStyle: k })}
-                      style={{ accentColor: '#4f46e5' }} // 🎨 Changes radio button color
+                      style={{ accentColor: '#a5b4fc' }} // 🎨 Light indigo accent
                     />
-                    {k.charAt(0).toUpperCase() + k.slice(1)} {/* 🎨 Capitalized */}
+                    {k.charAt(0).toUpperCase() + k.slice(1)}
                   </label>
                 ))}
               </div>
             </div>
           </div>
           
-          {/* 🎨 --- CARD FOR FREE TEXT / DOCX --- */}
+          {/* 🎨 --- CARD FOR FREE TEXT / DOCX (Dark) --- */}
           <div style={{
             padding: '1.5rem',
-            backgroundColor: '#ffffff',
+            backgroundColor: '#374151', // 🎨 Darker card
             borderRadius: '12px',
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.03)',
             display: 'grid',
             gap: '1.25rem'
           }}>
-             <h3 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0' }}>Context</h3>
+             <h3 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0', color: '#f9fafb' }}>Context</h3>
             <div>
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>
+              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>
                 Free Text (paste schedule / journal / notes)
               </label>
               <textarea
@@ -306,26 +345,27 @@ export default function EnergyApp() {
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid #4b5563',
                   borderRadius: '8px',
                   boxSizing: 'border-box',
-                  fontFamily: 'inherit', // 🎨 Use the app's font
+                  fontFamily: 'inherit',
+                  backgroundColor: '#4b5563',
+                  color: '#f9fafb',
                 }}
               />
             </div>
 
             <div>
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>Or upload .docx:</label>
-              {/* 🎨 --- STYLE THE BUTTONS --- */}
+              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>Or upload .docx:</label>
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={loadingDocx}
-                // 🎨 Secondary button style
+                // 🎨 Secondary button style (dark)
                 style={{
                   padding: '0.6rem 1.25rem',
                   border: '1px solid #4f46e5',
-                  backgroundColor: '#ffffff',
-                  color: '#4f46e5',
+                  backgroundColor: '#374151',
+                  color: '#a5b4fc',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontWeight: '600',
@@ -334,7 +374,7 @@ export default function EnergyApp() {
               >
                 Choose File
               </button>
-              {fileName && <span style={{ marginLeft: 8, color: '#555' }}>Selected: {fileName}</span>}
+              {fileName && <span style={{ marginLeft: 8, color: '#d1d5db' }}>Selected: {fileName}</span>}
               <input
                 ref={fileRef}
                 type="file"
@@ -342,27 +382,27 @@ export default function EnergyApp() {
                 hidden
                 onChange={(e) => handleDocx(e.target.files)}
               />
-              {loadingDocx && <div style={{ color: '#4f46e5' }}>Parsing…</div>}
+              {loadingDocx && <div style={{ color: '#a5b4fc' }}>Parsing…</div>}
               {/* Display errors here */}
-              {docxError && <div style={{ color: '#dc2626', marginTop: '0.5rem' }}>{docxError}</div>}
+              {docxError && <div style={{ color: '#f87171', marginTop: '0.5rem' }}>{docxError}</div>}
             </div>
           </div>
 
           <div>
-            {/* 🎨 Primary button style */}
+            {/* 🎨 Primary button style (unchanged, looks good on dark) */}
             <button
               onClick={runAnalyze}
               disabled={!canAnalyze || analyzing}
               style={{
-                width: '100%', // 🎨 Make it full width
+                width: '100%',
                 padding: '1rem',
                 border: 'none',
-                backgroundColor: !canAnalyze || analyzing ? '#d1d5db' : '#4f46e5', // 🎨 Indigo color, gray when disabled
-                color: 'white',
+                backgroundColor: !canAnalyze || analyzing ? '#4b5563' : '#4f46e5',
+                color: !canAnalyze || analyzing ? '#9ca3af' : 'white',
                 borderRadius: '8px',
                 cursor: 'pointer',
                 fontWeight: '700',
-                fontSize: '1.125rem', // 🎨 Larger text
+                fontSize: '1.125rem',
                 transition: 'background-color 0.2s',
               }}
             >
@@ -375,39 +415,81 @@ export default function EnergyApp() {
       {/* 🎨 --- STEP 2 & 3: DASHBOARD --- */}
       {step >= 2 && (
         <div style={{ marginTop: 24 }}>
-          <h3 style={{ fontSize: '1.5rem', fontWeight: '600', textAlign: 'center', marginBottom: '1.5rem' }}>
-            Current Energy (%)
+          <h3 style={{ fontSize: '1.5rem', fontWeight: '600', textAlign: 'center', marginBottom: '1.5rem', color: '#f9fafb' }}>
+            Current Energy
           </h3>
+          
+          {/* 🎨 --- NEW MASCOT CARD --- 🎨 */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+            marginBottom: '1.5rem',
+            padding: '1.5rem',
+            backgroundColor: '#374151', // Card background
+            borderRadius: '12px',
+            textAlign: 'center',
+            color: '#d1d5db'
+          }}>
+            <div>
+              <img 
+                src={mentalMascot.url} 
+                alt="Mental Energy Mascot" 
+                style={{ 
+                  width: 80, 
+                  height: 80, 
+                  borderRadius: '50%', 
+                  margin: '0 auto',
+                  border: `4px solid ${mentalMascot.color}` // Dynamic border color
+                }} 
+              />
+              <p style={{ margin: '0.5rem 0 0 0', fontWeight: '600', fontSize: '1.1rem' }}>Mental: {mental}%</p>
+            </div>
+            <div>
+              <img 
+                src={physicalMascot.url} 
+                alt="Physical Energy Mascot" 
+                style={{ 
+                  width: 80, 
+                  height: 80, 
+                  borderRadius: '50%', 
+                  margin: '0 auto',
+                  border: `4px solid ${physicalMascot.color}` // Dynamic border color
+                }} 
+              />
+              <p style={{ margin: '0.5rem 0 0 0', fontWeight: '600', fontSize: '1.1rem' }}>Physical: {physical}%</p>
+            </div>
+          </div>
+          {/* 🎨 --- END MASCOT CARD --- 🎨 */}
+
+
+          {/* 🎨 --- CHART CARD (Dark) --- */}
           <div
-            // 🎨 --- STYLE THE CHART CONTAINER (make it a "card") ---
             style={{
               width: '100%',
               height: 320,
-              border: 'none', // 🎨 Remove default border
+              border: 'none',
               borderRadius: '12px',
-              padding: '1.5rem', // 🎨 Add padding
-              backgroundColor: '#ffffff',
-              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.03)',
+              padding: '1.5rem',
+              backgroundColor: '#374151', // Dark card
               boxSizing: 'border-box'
             }}
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData as any}>
-                {/* 🎨 Style the chart grid */}
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="kind" axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
-                {/* 🎨 Style the tooltip */}
+                <CartesianGrid strokeDasharray="3 3" stroke="#4b5563" />
+                <XAxis dataKey="kind" axisLine={false} tickLine={false} tick={{ fill: '#d1d5db' }} />
+                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#d1d5db' }} />
                 <Tooltip
-                  cursor={{ fill: '#f3f4f6', radius: 8 }}
+                  cursor={{ fill: '#4b5563', radius: 8 }}
                   contentStyle={{
                     borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.05)',
+                    border: '1px solid #4b5563',
+                    backgroundColor: '#1f2937', // Dark tooltip
                   }}
+                  labelStyle={{ color: '#f9fafb' }}
                 />
                 <Legend wrapperStyle={{ paddingTop: '1rem' }} />
-                {/* 🎨 --- CHANGE BAR COLORS HERE --- */}
                 <Bar dataKey="value" name="Current" fill="#4f46e5" radius={[8, 8, 0, 0]} />
                 {baseline && (
                   <Bar dataKey="baseline" name="Baseline" fill="#a5b4fc" radius={[8, 8, 0, 0]} />
@@ -416,75 +498,71 @@ export default function EnergyApp() {
             </ResponsiveContainer>
           </div>
 
-          {/* 🎨 --- STYLE THE DELTA MESSAGE --- */}
+          {/* 🎨 --- DELTA MESSAGE (Dark) --- */}
           {lastDelta && (
             <div
               style={{
                 marginTop: '1.5rem',
-                color: '#374151',
-                backgroundColor: '#f3f4f6',
+                color: '#d1d5db',
+                backgroundColor: '#374151', // Dark card
                 padding: '1rem',
                 borderRadius: '8px',
                 textAlign: 'center',
                 fontWeight: '500'
               }}
             >
-              {/* 🎨 Add color to the deltas */}
               Recent Activity Impact: 
-              <span style={{ color: lastDelta.mental >= 0 ? '#10b981' : '#ef4444', fontWeight: '700' }}>
+              <span style={{ color: lastDelta.mental >= 0 ? '#4ade80' : '#f87171', fontWeight: '700' }}>
                 {' '}Mental {lastDelta.mental >= 0 ? '+' : ''}{lastDelta.mental}
               </span>,
-              <span style={{ color: lastDelta.physical >= 0 ? '#10b981' : '#ef4444', fontWeight: '700' }}>
+              <span style={{ color: lastDelta.physical >= 0 ? '#4ade80' : '#f87171', fontWeight: '700' }}>
                 {' '}Physical {lastDelta.physical >= 0 ? '+' : ''}{lastDelta.physical}
               </span>
             </div>
           )}
           
           {/* Display errors from applyActivity here */}
-          {docxError && step >= 2 && <div style={{ color: '#dc2626', marginTop: '1rem', textAlign: 'center' }}>{docxError}</div>}
+          {docxError && step >= 2 && <div style={{ color: '#f87171', marginTop: '1rem', textAlign: 'center' }}>{docxError}</div>}
         </div>
       )}
 
-      {/* 🎨 --- STEP 2 & 3: ACTIVITY INPUT --- */}
+      {/* 🎨 --- ACTIVITY INPUT (Dark) --- */}
       {step >= 2 && (
         <div 
-          // 🎨 Style this section as a card
           style={{
             marginTop: '2rem',
             padding: '1.5rem',
-            backgroundColor: '#ffffff',
+            backgroundColor: '#374151', // Dark card
             borderRadius: '12px',
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.03)',
           }}
         >
-          <label style={{ fontWeight: '600', fontSize: '1.125rem', display: 'block', marginBottom: '1rem' }}>
+          <label style={{ fontWeight: '600', fontSize: '1.125rem', display: 'block', marginBottom: '1rem', color: '#f9fafb' }}>
             Apply an Activity
           </label>
-          <p style={{ color: '#555', marginTop: 0, marginBottom: '1rem', fontSize: '0.9rem'}}>
+          <p style={{ color: '#d1d5db', marginTop: 0, marginBottom: '1rem', fontSize: '0.9rem'}}>
             (e.g. 20min nap / coffee / 30min run / deep work 45m)
           </p>
-          {/* 🎨 Use a flex container to align input and button */}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <input
               value={activity}
               onChange={(e) => setActivity(e.target.value)}
-              // 🎨 Style the input
               style={{
-                flex: 1, // 🎨 Make it grow
+                flex: 1,
                 padding: '0.75rem 1rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid #4b5563',
                 borderRadius: '8px',
+                backgroundColor: '#4b5563',
+                color: '#f9fafb',
               }}
             />
             <button
               onClick={applyActivity}
               disabled={!activity.trim() || applying}
-              // 🎨 Style the button
               style={{
                 padding: '0.75rem 1.5rem',
                 border: 'none',
-                backgroundColor: !activity.trim() || applying ? '#d1d5db' : '#4f46e5',
-                color: 'white',
+                backgroundColor: !activity.trim() || applying ? '#4b5563' : '#4f46e5',
+                color: !activity.trim() || applying ? '#9ca3af' : 'white',
                 borderRadius: '8px',
                 cursor: 'pointer',
                 fontWeight: '600',
