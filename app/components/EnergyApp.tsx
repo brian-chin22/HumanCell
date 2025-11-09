@@ -440,7 +440,7 @@ export default function EnergyApp() {
             </div>
           )}
           
-          {/* Display errorss from applyActivity here */}
+          {/* Display errors from applyActivity here */}
           {docxError && step >= 2 && <div style={{ color: '#dc2626', marginTop: '1rem', textAlign: 'center' }}>{docxError}</div>}
         </div>
       )}
