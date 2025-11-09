@@ -104,6 +104,22 @@ export default function EnergyApp() {
       setPhysical(data.physical);
       setBaseline({ mental: data.mental, physical: data.physical });
       setStep(2);
+
+      // --- MERGED FEATURE: Save to cloud storage ---
+      // This is the new code you added.
+      // also save the raw input to storage (best-effort)
+      try {
+        await fetch('/api/saveInput', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile, freeText: text }),
+        });
+      } catch (e) {
+        // non-fatal: just log
+        console.error('saveInput failed:', e);
+      }
+      // --- END MERGED FEATURE ---
+
     } catch (e) {
       console.error(e);
       // Use the UI error state instead of alert()
