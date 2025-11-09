@@ -29,11 +29,12 @@ interface AnalysisInput {
   freeText: string;
 }
 
+// ---- Main Component ----
 export default function EnergyApp() {
-  // Step control: 1 = input, 2 = show chart, 3 = activity update
+  // Step control
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Profile
+  // Form State
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
     age: null,
@@ -42,33 +43,84 @@ export default function EnergyApp() {
     goals: '',
     tags: [],
   });
-
-  // Free text / docx upload
   const [text, setText] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const [loadingDocx, setLoadingDocx] = useState(false);
-  const [docxError, setDocxError] = useState<string | null>(null);
 
-  // Two percentage values + baseline
+  // Loading & Error State
+  const [loadingDocx, setLoadingDocx] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState<string | null>(null); // For UI errors
+
+  // Energy State
   const [mental, setMental] = useState<number | null>(null);
   const [physical, setPhysical] = useState<number | null>(null);
   const [baseline, setBaseline] = useState<{ mental: number; physical: number } | null>(null);
+  const [activity, setActivity] = useState('');
+  const [lastDelta, setLastDelta] = useState<{ mental: number; physical: number } | null>(null);
 
-  const [analyzing, setAnalyzing] = useState(false);
-
+  // Derived State
   const canAnalyze = useMemo(
     () => Boolean(profile.name.trim()) && Boolean(profile.workStyle),
     [profile]
   );
 
-  // Parse docx: dynamic import for browser-only behavior
+  // ---- Helper Functions ----
+
+  /**
+   * Gets mascot image URL and status color based on energy level
+   */
+  const getMascotData = (level: number | null) => {
+    const score = level ?? 50; // Default to 50 if null
+
+    // 🎨 MONOPOLY THEME: Color codes for status
+    const colors = {
+      high: '#3cb043', // Property Green
+      mid: '#fde900',  // Chance Yellow
+      low: '#d90429',   // Monopoly Red
+    };
+
+    // 🎨 REPLACE THESE URLs WITH YOUR PNGs/JPEGs
+    // These paths assume a /public/mascots/ folder
+    if (score >= 75) {
+      return {
+        //url: 'https://placehold.co/100x100/3cb043/white?text=HIGH',
+        url: '/mascots/Energetic_Monopoly.png', // <-- Your image here
+        color: colors.high,
+        label: 'High Energy',
+      };
+    }
+    if (score >= 50) {
+      return {
+        //url: 'https://placehold.co/100x100/fde900/black?text=MID',
+        url: '/mascots/Neutral_Monopoly.png', // <-- Your image here
+        color: colors.mid,
+        label: 'Medium Energy',
+      };
+    }
+    return {
+      //url: 'https://placehold.co/100x100/d90429/white?text=LOW',
+      url: '/mascots/Exhausted_Monopoly_eyebags.png', // <-- Your image here
+      color: colors.low,
+      label: 'Low Energy',
+    };
+  };
+
+  const mentalMascot = useMemo(() => getMascotData(mental), [mental]);
+  const physicalMascot = useMemo(() => getMascotData(physical), [physical]);
+
+  // ---- Data Handling ----
+
+  /**
+   * Parse .docx file
+   */
   const handleDocx = useCallback(async (files: FileList | null) => {
     if (!files || !files.length) return;
     const f = files[0];
-    setDocxError(null);
+    setError(null);
     if (!f.name.toLowerCase().endsWith('.docx')) {
-      setDocxError('Only .docx files are supported');
+      setError('Only .docx files are supported');
       return;
     }
     setLoadingDocx(true);
@@ -81,16 +133,18 @@ export default function EnergyApp() {
       setText((prev) => (prev ? prev + '\n\n' + normalized : normalized));
     } catch (e) {
       console.error(e);
-      setDocxError('Failed to parse .docx file. Please make sure it is valid.');
+      setError('Failed to parse .docx file. Please make sure it is valid.');
     } finally {
       setLoadingDocx(false);
     }
   }, []);
 
-  // Fetch two energy values from backend
+  /**
+   * Fetch initial energy values from backend
+   */
   const runAnalyze = async () => {
     setAnalyzing(true);
-    setDocxError(null); // Clear previous errors
+    setError(null);
     try {
       const payload: AnalysisInput = { profile, freeText: text };
       const res = await fetch('/api/analyze2p', {
@@ -105,8 +159,6 @@ export default function EnergyApp() {
       setBaseline({ mental: data.mental, physical: data.physical });
       setStep(2);
 
-      // --- MERGED FEATURE: Save to cloud storage ---
-      // This is the new code you added.
       // also save the raw input to storage (best-effort)
       try {
         await fetch('/api/saveInput', {
@@ -118,26 +170,21 @@ export default function EnergyApp() {
         // non-fatal: just log
         console.error('saveInput failed:', e);
       }
-      // --- END MERGED FEATURE ---
-
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      // Use the UI error state instead of alert()
-      setDocxError(`Backend analysis failed. Please check the API. (${(e as Error).message})`);
+      setError(`Backend analysis failed: ${e.message || 'Check /api/analyze2p route.'}`);
     } finally {
       setAnalyzing(false);
     }
   };
 
-  // Apply activity to update energy
-  const [activity, setActivity] = useState('');
-  const [applying, setApplying] = useState(false);
-  const [lastDelta, setLastDelta] = useState<{ mental: number; physical: number } | null>(null);
-
+  /**
+   * Apply activity to update energy
+   */
   const applyActivity = async () => {
     if (mental == null || physical == null) return;
     setApplying(true);
-    setDocxError(null); // Clear previous errors
+    setError(null);
     try {
       const res = await fetch('/api/applyActivity', {
         method: 'POST',
@@ -153,16 +200,16 @@ export default function EnergyApp() {
       setMental(data.newVals.mental);
       setPhysical(data.newVals.physical);
       setActivity('');
-      setStep(3); // setStep(2) would also be fine, as step >= 2 shows the chart
-    } catch (e) {
+      setStep(3);
+    } catch (e: any) {
       console.error(e);
-      // Use the UI error state instead of alert()
-      setDocxError(`Backend applyActivity failed. Please check the API. (${(e as Error).message})`);
+      setError(`Backend applyActivity failed: ${e.message || 'Check the route.'}`);
     } finally {
       setApplying(false);
     }
   };
 
+  // Chart data
   const barData = useMemo(
     () => [
       { kind: 'Mental', value: mental ?? 0, baseline: baseline?.mental ?? null },
@@ -171,103 +218,105 @@ export default function EnergyApp() {
     [mental, physical, baseline]
   );
 
-  // 🎨 --- NEW MASCOT HELPER FUNCTION ---
-  // This function returns a URL and color based on the energy level.
-  // You can replace the URLs with your own mascot images.
-  const getMascotData = (level: number | null) => {
-    const score = level ?? 50; // Default to 'Okay' if null
-    
-    // 🎨 REPLACE THESE URLs WITH YOUR PNGs/JPEGs
-    if (score >= 75) {
-      return {
-        // High Energy
-        url: '/mascots/Energetic_Monopoly.png',
-        color: '#4ade80'
-      };
-    }
-    if (score >= 50) {
-      // Medium Energy
-      return {
-        url: '/mascots/Neutral_Monopoly.png',
-        color: '#facc15'
-      };
-    }
-    if (score >= 25) {
-      // Low Energy
-      return {
-        url: '/mascots/Exhausted_Monopoly_headlines.png',
-        color: '#f87171'
-      };
-    }
-    // < 25 (Very Low Energy)
-    return {
-      url: '/mascots/Exhausted_Monopoly_eyebags.png',
-      color: '#ef4444'
-    };
+  // ---- Monopoly Color Palette ----
+  const colors = {
+    boardGreen: '#cde6d0',
+    deedCream: '#f7f3e8',
+    textBlack: '#212529',
+    monopolyRed: '#d90429',
+    chanceYellow: '#fde900',
+    boardwalkBlue: '#0072bb',
+    propertyGreen: '#3cb043',
+    disabledGray: '#999',
+    errorRed: '#d90429',
+    errorBg: '#fbebee',
   };
 
-  // 🎨 Get the mascot data objects before returning the JSX
-  const mentalMascot = getMascotData(mental);
-  const physicalMascot = getMascotData(physical);
-
+  // ---- Component Return ----
   return (
-    // 🎨 --- MAIN CONTAINER (Dark Theme) ---
     <div
       style={{
         maxWidth: 900,
         margin: '2rem auto',
-        padding: '2rem',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        backgroundColor: '#1f2937', // 🎨 Dark slate background
-        color: '#d1d5db', // 🎨 Light gray text
+        padding: '1rem', // Smaller padding on mobile
+        fontFamily: "'Trebuchet MS', Helvetica, sans-serif",
+        backgroundColor: colors.boardGreen,
+        color: colors.textBlack,
         borderRadius: '16px',
-        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)', // 🎨 Adjusted shadow for dark
+        border: `3px solid ${colors.textBlack}`,
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
       }}
     >
-      {/* 🎨 --- HEADER --- */}
+      <style>{`
+        ::placeholder { color: ${colors.disabledGray}; opacity: 1; }
+      `}</style>
+      
       <h1
         style={{
-          fontSize: '2.25rem',
+          fontSize: '2.5rem',
           marginBottom: '2rem',
           textAlign: 'center',
           fontWeight: '700',
-          color: '#f9fafb', // 🎨 Bright white header
+          color: colors.monopolyRed,
+          textShadow: `1px 1px 0 ${colors.deedCream}`,
         }}
       >
         Energy Manager
       </h1>
 
-      {/* 🎨 --- STEP 1: INPUT FORM --- */}
+      {/* --- Global Error Display --- */}
+      {error && (
+        <div style={{
+          padding: '1rem',
+          backgroundColor: colors.errorBg,
+          border: `2px solid ${colors.errorRed}`,
+          color: colors.errorRed,
+          borderRadius: '8px',
+          marginBottom: '1rem',
+          textAlign: 'center',
+          fontWeight: '600'
+        }}>
+          {error}
+        </div>
+      )}
+
+      {/* ------------------ */}
+      {/* 🎨 STEP 1: INPUT  */}
+      {/* ------------------ */}
       {step === 1 && (
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           
-          {/* 🎨 --- CARD FOR PROFILE INFO (Dark) --- */}
+          {/* --- Profile Card --- */}
           <div style={{
             padding: '1.5rem',
-            backgroundColor: '#374151', // 🎨 Darker card
+            backgroundColor: colors.deedCream,
             borderRadius: '12px',
+            border: `2px solid ${colors.textBlack}`,
             display: 'grid',
             gap: '1.25rem'
           }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0 0 0.5rem 0', color: '#f9fafb' }}>Your Profile</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', margin: '0 0 0.5rem 0', color: colors.monopolyRed }}>
+              Your Profile
+            </h3>
             <div>
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>Name:</label>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.5rem' }}>Name:</label>
               <input
                 value={profile.name}
+                placeholder="e.g., Mr. Monopoly"
                 onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
-                  border: '1px solid #4b5563', // 🎨 Darker border
+                  border: `2px solid ${colors.textBlack}`,
                   borderRadius: '8px',
                   boxSizing: 'border-box',
-                  backgroundColor: '#4b5563', // 🎨 Dark input
-                  color: '#f9fafb', // 🎨 Light text
+                  backgroundColor: '#fff',
+                  color: colors.textBlack, // <-- FIX: Added text color
                 }}
               />
             </div>
             <div>
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>Average Sleep (hours):</label>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.5rem' }}>Average Sleep (hours):</label>
               <input
                 type="number"
                 step="0.5"
@@ -281,34 +330,33 @@ export default function EnergyApp() {
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
-                  border: '1px solid #4b5563',
+                  border: `2px solid ${colors.textBlack}`,
                   borderRadius: '8px',
                   boxSizing: 'border-box',
-                  backgroundColor: '#4b5563',
-                  color: '#f9fafb',
+                  backgroundColor: '#fff',
+                  color: colors.textBlack, // <-- FIX: Added text color
                 }}
               />
             </div>
             <div>
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>Work Style:</label>
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.5rem' }}>Work Style:</label>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 {(['maker', 'manager', 'mixed'] as const).map((k) => (
                   <label
                     key={k}
                     style={{
                       flex: 1,
+                      minWidth: '80px',
                       padding: '0.75rem 1rem',
-                      border: '1px solid #4b5563',
+                      border: `2px solid ${colors.textBlack}`,
                       borderRadius: '8px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.5rem',
-                      // 🎨 Highlight selected radio in dark mode
-                      backgroundColor: profile.workStyle === k ? '#4f46e5' : '#374151',
-                      borderColor: profile.workStyle === k ? '#a5b4fc' : '#4b5563',
-                      color: profile.workStyle === k ? '#ffffff' : '#d1d5db',
-                      transition: 'all 0.2s',
+                      fontWeight: '600',
+                      backgroundColor: profile.workStyle === k ? colors.chanceYellow : '#fff',
+                      boxShadow: profile.workStyle === k ? `0 0 5px ${colors.chanceYellow}` : 'none',
                     }}
                   >
                     <input
@@ -316,7 +364,7 @@ export default function EnergyApp() {
                       name="workstyle"
                       checked={profile.workStyle === k}
                       onChange={() => setProfile({ ...profile, workStyle: k })}
-                      style={{ accentColor: '#a5b4fc' }} // 🎨 Light indigo accent
+                      style={{ accentColor: colors.monopolyRed }}
                     />
                     {k.charAt(0).toUpperCase() + k.slice(1)}
                   </label>
@@ -325,47 +373,50 @@ export default function EnergyApp() {
             </div>
           </div>
           
-          {/* 🎨 --- CARD FOR FREE TEXT / DOCX (Dark) --- */}
+          {/* --- Context Card --- */}
           <div style={{
             padding: '1.5rem',
-            backgroundColor: '#374151', // 🎨 Darker card
+            backgroundColor: colors.deedCream,
             borderRadius: '12px',
+            border: `2px solid ${colors.textBlack}`,
             display: 'grid',
             gap: '1.25rem'
           }}>
-             <h3 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0', color: '#f9fafb' }}>Context</h3>
+             <h3 style={{ fontSize: '1.25rem', fontWeight: '700', margin: '0', color: colors.monopolyRed }}>
+               Context (Optional)
+             </h3>
             <div>
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>
-                Free Text (paste schedule / journal / notes)
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.5rem' }}>
+                Paste schedule / journal / notes...
               </label>
               <textarea
                 value={text}
+                placeholder="e.g., 'Long meeting from 10-12, then ate fast food...'"
                 onChange={(e) => setText(e.target.value)}
                 rows={6}
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
-                  border: '1px solid #4b5563',
+                  border: `2px solid ${colors.textBlack}`,
                   borderRadius: '8px',
                   boxSizing: 'border-box',
                   fontFamily: 'inherit',
-                  backgroundColor: '#4b5563',
-                  color: '#f9fafb',
+                  backgroundColor: '#fff',
+                  color: colors.textBlack, // <-- FIX: Added text color
                 }}
               />
             </div>
 
             <div>
-              <label style={{ fontWeight: '500', display: 'block', marginBottom: '0.5rem', color: '#d1d5db' }}>Or upload .docx:</label>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.5rem' }}>Or upload .docx:</label>
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={loadingDocx}
-                // 🎨 Secondary button style (dark)
                 style={{
                   padding: '0.6rem 1.25rem',
-                  border: '1px solid #4f46e5',
-                  backgroundColor: '#374151',
-                  color: '#a5b4fc',
+                  border: `2px solid ${colors.textBlack}`,
+                  backgroundColor: '#fff',
+                  color: colors.textBlack,
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontWeight: '600',
@@ -374,7 +425,7 @@ export default function EnergyApp() {
               >
                 Choose File
               </button>
-              {fileName && <span style={{ marginLeft: 8, color: '#d1d5db' }}>Selected: {fileName}</span>}
+              {fileName && <span style={{ marginLeft: 8, color: '#555' }}>Selected: {fileName}</span>}
               <input
                 ref={fileRef}
                 type="file"
@@ -382,28 +433,27 @@ export default function EnergyApp() {
                 hidden
                 onChange={(e) => handleDocx(e.target.files)}
               />
-              {loadingDocx && <div style={{ color: '#a5b4fc' }}>Parsing…</div>}
-              {/* Display errors here */}
-              {docxError && <div style={{ color: '#f87171', marginTop: '0.5rem' }}>{docxError}</div>}
+              {loadingDocx && <div style={{ color: colors.boardwalkBlue, fontWeight: '600' }}>Parsing…</div>}
             </div>
           </div>
 
+          {/* --- Analyze Button --- */}
           <div>
-            {/* 🎨 Primary button style (unchanged, looks good on dark) */}
             <button
               onClick={runAnalyze}
               disabled={!canAnalyze || analyzing}
               style={{
                 width: '100%',
                 padding: '1rem',
-                border: 'none',
-                backgroundColor: !canAnalyze || analyzing ? '#4b5563' : '#4f46e5',
-                color: !canAnalyze || analyzing ? '#9ca3af' : 'white',
+                border: `2px solid ${colors.textBlack}`,
+                backgroundColor: !canAnalyze || analyzing ? colors.disabledGray : colors.monopolyRed,
+                color: 'white',
                 borderRadius: '8px',
                 cursor: 'pointer',
                 fontWeight: '700',
                 fontSize: '1.125rem',
-                transition: 'background-color 0.2s',
+                transition: 'all 0.2s',
+                textShadow: `1px 1px 0 ${colors.textBlack}`,
               }}
             >
               {analyzing ? 'Analyzing…' : 'Analyze My Energy'}
@@ -412,165 +462,161 @@ export default function EnergyApp() {
         </div>
       )}
 
-      {/* 🎨 --- STEP 2 & 3: DASHBOARD --- */}
+      {/* ---------------------- */}
+      {/* 🎨 STEP 2/3: DASHBOARD */}
+      {/* ---------------------- */}
       {step >= 2 && (
-        <div style={{ marginTop: 24 }}>
-          <h3 style={{ fontSize: '1.5rem', fontWeight: '600', textAlign: 'center', marginBottom: '1.5rem', color: '#f9fafb' }}>
-            Current Energy
-          </h3>
+        <div style={{ marginTop: 24, display: 'grid', gap: '1.5rem' }}>
           
-          {/* 🎨 --- NEW MASCOT CARD --- 🎨 */}
+          {/* --- Mascot Display --- */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-around',
-            alignItems: 'center',
-            marginBottom: '1.5rem',
+            gap: '1rem',
             padding: '1.5rem',
-            backgroundColor: '#374151', // Card background
+            backgroundColor: colors.deedCream,
             borderRadius: '12px',
-            textAlign: 'center',
-            color: '#d1d5db'
+            border: `2px solid ${colors.textBlack}`,
+            flexWrap: 'wrap', // Added for better mobile view
           }}>
-            <div>
-              <img 
-                src={mentalMascot.url} 
-                alt="Mental Energy Mascot" 
-                style={{ 
-                  width: 80, 
-                  height: 80, 
-                  borderRadius: '50%', 
-                  margin: '0 auto',
-                  border: `4px solid ${mentalMascot.color}` // Dynamic border color
-                }} 
+            {/* Mental Mascot */}
+            <div style={{ textAlign: 'center' }}>
+              <img
+                src={mentalMascot.url}
+                alt="Mental energy mascot"
+                style={{ width: 100, height: 100, borderRadius: '8px', border: `3px solid ${mentalMascot.color}` }}
+                onError={(e) => (e.currentTarget.src = 'https://placehold.co/100x100/ccc/black?text=Error')}
               />
-              <p style={{ margin: '0.5rem 0 0 0', fontWeight: '600', fontSize: '1.1rem' }}>Mental: {mental}%</p>
+              <h4 style={{ margin: '0.5rem 0 0 0', color: mentalMascot.color, fontWeight: '700' }}>
+                Mental: {mentalMascot.label}
+              </h4>
             </div>
-            <div>
-              <img 
-                src={physicalMascot.url} 
-                alt="Physical Energy Mascot" 
-                style={{ 
-                  width: 80, 
-                  height: 80, 
-                  borderRadius: '50%', 
-                  margin: '0 auto',
-                  border: `4px solid ${physicalMascot.color}` // Dynamic border color
-                }} 
+            {/* Physical Mascot */}
+            <div style={{ textAlign: 'center' }}>
+              <img
+                src={physicalMascot.url}
+                alt="Physical energy mascot"
+                style={{ width: 100, height: 100, borderRadius: '8px', border: `3px solid ${physicalMascot.color}` }}
+                onError={(e) => (e.currentTarget.src = 'https://placehold.co/100x100/ccc/black?text=Error')}
               />
-              <p style={{ margin: '0.5rem 0 0 0', fontWeight: '600', fontSize: '1.1rem' }}>Physical: {physical}%</p>
+              <h4 style={{ margin: '0.5rem 0 0 0', color: physicalMascot.color, fontWeight: '700' }}>
+                Physical: {physicalMascot.label}
+              </h4>
             </div>
           </div>
-          {/* 🎨 --- END MASCOT CARD --- 🎨 */}
 
-
-          {/* 🎨 --- CHART CARD (Dark) --- */}
-          <div
-            style={{
-              width: '100%',
-              height: 320,
-              border: 'none',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              backgroundColor: '#374151', // Dark card
-              boxSizing: 'border-box'
-            }}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData as any}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#4b5563" />
-                <XAxis dataKey="kind" axisLine={false} tickLine={false} tick={{ fill: '#d1d5db' }} />
-                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#d1d5db' }} />
-                <Tooltip
-                  cursor={{ fill: '#4b5563', radius: 8 }}
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: '1px solid #4b5563',
-                    backgroundColor: '#1f2937', // Dark tooltip
-                  }}
-                  labelStyle={{ color: '#f9fafb' }}
-                />
-                <Legend wrapperStyle={{ paddingTop: '1rem' }} />
-                <Bar dataKey="value" name="Current" fill="#4f46e5" radius={[8, 8, 0, 0]} />
-                {baseline && (
-                  <Bar dataKey="baseline" name="Baseline" fill="#a5b4fc" radius={[8, 8, 0, 0]} />
-                )}
-              </BarChart>
-            </ResponsiveContainer>
+          {/* --- Chart Card --- */}
+          <div style={{
+            padding: '1.5rem',
+            backgroundColor: colors.deedCream,
+            borderRadius: '12px',
+            border: `2px solid ${colors.textBlack}`,
+          }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: '700', textAlign: 'center', marginBottom: '1.5rem', color: colors.monopolyRed }}>
+              Current Energy (%)
+            </h3>
+            <div
+              style={{
+                width: '100%',
+                height: 320,
+                boxSizing: 'border-box'
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barData as any} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                  <XAxis dataKey="kind" axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(0, 0, 0, 0.1)', radius: 8 }}
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `2px solid ${colors.textBlack}`,
+                      backgroundColor: colors.deedCream,
+                      color: colors.textBlack, // <-- FIX: Added text color
+                    }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '1rem' }} />
+                  <Bar dataKey="value" name="Current" fill={colors.boardwalkBlue} radius={[8, 8, 0, 0]} />
+                  {baseline && (
+                    <Bar dataKey="baseline" name="Baseline" fill={colors.propertyGreen} radius={[8, 8, 0, 0]} />
+                  )}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-
-          {/* 🎨 --- DELTA MESSAGE (Dark) --- */}
+          
+          {/* --- Delta Message --- */}
           {lastDelta && (
             <div
               style={{
-                marginTop: '1.5rem',
-                color: '#d1d5db',
-                backgroundColor: '#374151', // Dark card
+                color: colors.textBlack,
+                backgroundColor: colors.chanceYellow,
                 padding: '1rem',
                 borderRadius: '8px',
                 textAlign: 'center',
-                fontWeight: '500'
+                fontWeight: '600',
+                border: `2px solid ${colors.textBlack}`,
               }}
             >
               Recent Activity Impact: 
-              <span style={{ color: lastDelta.mental >= 0 ? '#4ade80' : '#f87171', fontWeight: '700' }}>
+              <span style={{ color: lastDelta.mental >= 0 ? colors.propertyGreen : colors.monopolyRed, fontWeight: '700' }}>
                 {' '}Mental {lastDelta.mental >= 0 ? '+' : ''}{lastDelta.mental}
               </span>,
-              <span style={{ color: lastDelta.physical >= 0 ? '#4ade80' : '#f87171', fontWeight: '700' }}>
+              <span style={{ color: lastDelta.physical >= 0 ? colors.propertyGreen : colors.monopolyRed, fontWeight: '700' }}>
                 {' '}Physical {lastDelta.physical >= 0 ? '+' : ''}{lastDelta.physical}
               </span>
             </div>
           )}
-          
-          {/* Display errors from applyActivity here */}
-          {docxError && step >= 2 && <div style={{ color: '#f87171', marginTop: '1rem', textAlign: 'center' }}>{docxError}</div>}
-        </div>
-      )}
 
-      {/* 🎨 --- ACTIVITY INPUT (Dark) --- */}
-      {step >= 2 && (
-        <div 
-          style={{
-            marginTop: '2rem',
-            padding: '1.5rem',
-            backgroundColor: '#374151', // Dark card
-            borderRadius: '12px',
-          }}
-        >
-          <label style={{ fontWeight: '600', fontSize: '1.125rem', display: 'block', marginBottom: '1rem', color: '#f9fafb' }}>
-            Apply an Activity
-          </label>
-          <p style={{ color: '#d1d5db', marginTop: 0, marginBottom: '1rem', fontSize: '0.9rem'}}>
-            (e.g. 20min nap / coffee / 30min run / deep work 45m)
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              value={activity}
-              onChange={(e) => setActivity(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '0.75rem 1rem',
-                border: '1px solid #4b5563',
-                borderRadius: '8px',
-                backgroundColor: '#4b5563',
-                color: '#f9fafb',
-              }}
-            />
-            <button
-              onClick={applyActivity}
-              disabled={!activity.trim() || applying}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: 'none',
-                backgroundColor: !activity.trim() || applying ? '#4b5563' : '#4f46e5',
-                color: !activity.trim() || applying ? '#9ca3af' : 'white',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                transition: 'background-color 0.2s',
-              }}
-            >
-              {applying ? 'Submitting…' : 'Update'}
-            </button>
+          {/* --- Activity Input Card --- */}
+          <div 
+            style={{
+              padding: '1.5rem',
+              backgroundColor: colors.deedCream,
+              borderRadius: '12px',
+              border: `2px solid ${colors.textBlack}`,
+            }}
+          >
+            <label style={{ fontWeight: '700', fontSize: '1.25rem', display: 'block', marginBottom: '0.5rem', color: colors.monopolyRed }}>
+              Apply an Activity
+            </label>
+            <p style={{ color: '#555', marginTop: 0, marginBottom: '1rem', fontSize: '0.9rem'}}>
+              (e.g. 20min nap / coffee / 30min run / deep work 45m)
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <input
+                value={activity}
+                placeholder="Type activity here..."
+                onChange={(e) => setActivity(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: '200px',
+                  padding: '0.75rem 1rem',
+                  border: `2px solid ${colors.textBlack}`,
+                  borderRadius: '8px',
+                  backgroundColor: '#fff',
+                  color: colors.textBlack, // <-- FIX: Added text color
+                }}
+              />
+              <button
+                onClick={applyActivity}
+                disabled={!activity.trim() || applying}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: `2px solid ${colors.textBlack}`,
+                  backgroundColor: !activity.trim() || applying ? colors.disabledGray : colors.monopolyRed,
+                  color: 'white',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  transition: 'all 0.2s',
+                  textShadow: `1px 1px 0 ${colors.textBlack}`,
+                }}
+              >
+                {applying ? 'Submitting…' : 'Update'}
+              </button>
+            </div>
           </div>
         </div>
       )}
