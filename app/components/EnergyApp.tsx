@@ -103,6 +103,17 @@ export default function EnergyApp() {
       setPhysical(data.physical);
       setBaseline({ mental: data.mental, physical: data.physical });
       setStep(2);
+      // also save the raw input to storage (best-effort)
+      try {
+        await fetch('/api/saveInput', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile, freeText: text }),
+        });
+      } catch (e) {
+        // non-fatal: just log
+        console.error('saveInput failed:', e);
+      }
     } catch (e) {
       console.error(e);
       alert('Backend analysis failed. Please check /api/analyze2p route.');
