@@ -17,7 +17,8 @@ def test_gemini_response():
     records = read_cloud_strings(limit=1)
     assert records, "No cloud records to test"
     text = records[0]["text"]
-    prompt = text + "\nExplain how AI works in a few words"
+    prompt = text + "\nBased on the above text, generate a value between 1 and 100 for mental and physical health score."
+    print("Prompt sent to Gemini:", prompt)
 
     client = genai.Client()
     response = client.models.generate_content(
@@ -30,4 +31,4 @@ def test_gemini_response():
 
 if __name__ == "__main__":
     import pytest
-    pytest.main([__file__])
+    pytest.main(["-s", __file__])

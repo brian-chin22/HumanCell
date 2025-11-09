@@ -30,6 +30,7 @@ import sqlite3
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
+# Path from cloud storage (change in the future?)
 OUT_FILE = Path("data/gemini_results.jsonl")
 
 
@@ -98,13 +99,26 @@ def build_prompt(template: str, record: Dict[str, Any]) -> str:
         filled = filled.replace("{received}", str(record.get("received", "")))
     return filled
 
+def build_with_extra_prompt(template: str, record: Dict[str, Any], extra_prompt: str) -> str:
+    """
+    Calls build_prompt() to fill placeholders, then prepends or appends
+    an extra instruction or context text.
+    """
+    base_prompt = build_prompt(template, record)
+
+    # Option A: Add the extra prompt on TOP
+    combined = f"{extra_prompt.strip()}\n\n{base_prompt}"
+
+    # Option B (if you want it at the end):
+    # combined = f"{base_prompt}\n\n{extra_prompt.strip()}"
+
+    return combined
 
 def call_gemini(prompt: str, model: str = "text-bison-001") -> Dict[str, Any]:
-    """
-    Try to call Google Generative AI (Gemini) and return a dict with the response.
-    This function attempts multiple client libraries. If none are available it raises ImportError
-    with an instruction message.
-    """
+
+    #This function attempts multiple client libraries. If none are available it raises ImportError
+    #with an instruction message.
+
     # First try the new google.generativeai package
     api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_API_KEY_JSON")
     if not api_key:
@@ -113,8 +127,7 @@ def call_gemini(prompt: str, model: str = "text-bison-001") -> Dict[str, Any]:
 
     # Try google.generativeai (package name: google-generative-ai / google.generativeai)
     try:
-        import google.generativeai as genai  # type: ignore
-
+        from google import genai
         # configure if function exists
         if hasattr(genai, "configure"):
             try:
@@ -163,6 +176,24 @@ def call_gemini(prompt: str, model: str = "text-bison-001") -> Dict[str, Any]:
         "No supported Google Generative AI client found. Install the official package (e.g. `pip install google-generative-ai`) and set GOOGLE_API_KEY, or run without --call to only print prompts."
     )
 
+def gemini_json_response(gemini_result: dict):
+    """
+    Helper to return only the Gemini text as a Next.js API JSON response.
+    Usage: return gemini_json_response(call_gemini(...))
+    """
+    from typing import Any
+    try:
+        text = gemini_result.get("text", "")
+    except Exception:
+        text = ""
+    # For Next.js API route compatibility
+    try:
+        from nextjs import Response
+        return Response.json({"response": text})
+    except ImportError:
+        # Fallback for plain Python
+        import json
+        return json.dumps({"response": text})
 
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description="Feed stored text to Gemini using a prompt template")
@@ -213,6 +244,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     print(f"Wrote results/appended to {OUT_FILE}")
     return 0
+
+
 
 
 if __name__ == "__main__":
